@@ -36,11 +36,8 @@ services:
     depends_on:
       cookie-sync:
         condition: service_healthy
-    environment:
-      COOKIE_SYNC_DOMAIN: ${COOKIE_SYNC_DOMAIN:?set COOKIE_SYNC_DOMAIN in .env}
     ports:
-      - "80:80"
-      - "443:443"
+      - "${COOKIE_SYNC_BIND:-127.0.0.1}:${COOKIE_SYNC_PORT:-8765}:80"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy-data:/data
