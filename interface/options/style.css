@@ -12,7 +12,8 @@ body * {
   box-sizing: border-box;
   text-align: start;
 }
-.notransition *, .notransition *::before {
+.notransition *,
+.notransition *::before {
   -webkit-transition: none !important;
   -moz-transition: none !important;
   -o-transition: none !important;
@@ -103,6 +104,30 @@ a:hover {
   font-size: 0.8em;
   padding: 1em;
   padding-top: 4px;
+}
+
+.remote-sync-status {
+  clear: both;
+  margin: 8px 1em 4px;
+  padding: 8px 10px;
+  border-radius: 4px;
+  font-size: 0.85em;
+}
+
+.remote-sync-status.pending {
+  background-color: var(--secondary-surface-color);
+  color: var(--primary-text-color);
+}
+
+.remote-sync-status.success {
+  background-color: var(--success-surface-color);
+  color: var(--primary-text-color);
+}
+
+.remote-sync-status.error {
+  background-color: var(--notice-danger-surface-color);
+  color: var(--secondary-danger-color);
+  border: 1px solid var(--button-danger-surface-color);
 }
 
 .notice {

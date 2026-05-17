@@ -25,6 +25,8 @@ document.addEventListener('DOMContentLoaded', async event => {
   const adsEnabledInput = document.getElementById('ads-enabled');
   const remoteSyncUrlInput = document.getElementById('remote-sync-url');
   const remoteSyncTokenInput = document.getElementById('remote-sync-token');
+  const remoteSyncStatusElement = document.getElementById('remote-sync-status');
+  const remoteSyncTestButton = document.getElementById('remote-sync-test');
 
   await optionHandler.loadOptions();
   themeHandler.updateTheme();
@@ -114,20 +116,20 @@ document.addEventListener('DOMContentLoaded', async event => {
       if (!event.isTrusted) {
         return;
       }
+      clearRemoteSyncStatus();
       optionHandler.setRemoteSyncUrl(remoteSyncUrlInput.value);
     });
     remoteSyncTokenInput.addEventListener('change', event => {
       if (!event.isTrusted) {
         return;
       }
+      clearRemoteSyncStatus();
       optionHandler.setRemoteSyncBearerToken(remoteSyncTokenInput.value);
     });
 
-    document
-      .getElementById('remote-sync-test')
-      .addEventListener('click', async () => {
-        await testRemoteSyncConnection();
-      });
+    remoteSyncTestButton.addEventListener('click', async () => {
+      await testRemoteSyncConnection();
+    });
 
     document
       .getElementById('delete-all')
@@ -223,14 +225,19 @@ document.addEventListener('DOMContentLoaded', async event => {
     const baseUrl = remoteSyncUrlInput.value.trim().replace(/\/+$/, '');
     const token = remoteSyncTokenInput.value.trim();
     if (!baseUrl || !token) {
-      alert('Configure both the server URL and bearer token first.');
+      setRemoteSyncStatus(
+        'error',
+        'Configure both the server URL and bearer token first.'
+      );
       return;
     }
 
+    remoteSyncTestButton.disabled = true;
+    setRemoteSyncStatus('pending', 'Testing remote sync connection...');
     try {
       const healthResponse = await fetch(baseUrl + '/health');
       if (!healthResponse.ok) {
-        alert('Remote sync health check failed.');
+        setRemoteSyncStatus('error', 'Remote sync health check failed.');
         return;
       }
 
@@ -242,18 +249,48 @@ document.addEventListener('DOMContentLoaded', async event => {
       if (authResponse.status === 200 || authResponse.status === 404) {
         optionHandler.setRemoteSyncUrl(baseUrl);
         optionHandler.setRemoteSyncBearerToken(token);
-        alert('Remote sync connection is ready.');
+        setRemoteSyncStatus('success', 'Remote sync connection is ready.');
         return;
       }
       if (authResponse.status === 401) {
-        alert('Remote sync bearer token was rejected.');
+        setRemoteSyncStatus('error', 'Remote sync bearer token was rejected.');
         return;
       }
-      alert('Remote sync test failed with HTTP ' + authResponse.status + '.');
+      setRemoteSyncStatus(
+        'error',
+        'Remote sync test failed with HTTP ' + authResponse.status + '.'
+      );
     } catch (error) {
       console.error(error);
-      alert('Remote sync test failed: ' + error.message);
+      setRemoteSyncStatus('error', 'Remote sync test failed: ' + error.message);
+    } finally {
+      remoteSyncTestButton.disabled = false;
     }
+  }
+
+  /**
+   * Displays remote sync test status inline.
+   * @param {string} type Status type.
+   * @param {string} message Status message.
+   */
+  function setRemoteSyncStatus(type, message) {
+    remoteSyncStatusElement.textContent = message;
+    remoteSyncStatusElement.classList.remove(
+      'hidden',
+      'pending',
+      'success',
+      'error'
+    );
+    remoteSyncStatusElement.classList.add(type);
+  }
+
+  /**
+   * Clears the remote sync test status.
+   */
+  function clearRemoteSyncStatus() {
+    remoteSyncStatusElement.textContent = '';
+    remoteSyncStatusElement.classList.remove('pending', 'success', 'error');
+    remoteSyncStatusElement.classList.add('hidden');
   }
 
   /**
