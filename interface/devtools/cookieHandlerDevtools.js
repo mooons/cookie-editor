@@ -53,6 +53,22 @@ export class CookieHandlerDevtools extends GenericCookieHandler {
   }
 
   /**
+   * Gets all cookies matching a domain in the current cookie store.
+   * @param {string} domain Domain to retrieve cookies for.
+   * @param {function} callback
+   */
+  getAllCookiesForDomain(domain, callback) {
+    this.sendMessage(
+      'getAllCookiesForDomain',
+      {
+        domain: domain,
+        storeId: this.currentTab.cookieStoreId,
+      },
+      callback
+    );
+  }
+
+  /**
    * Saves a cookie. This can either create a new cookie or modify an existing
    * one.
    * @param {Cookie} cookie Cookie's data.
@@ -82,6 +98,38 @@ export class CookieHandlerDevtools extends GenericCookieHandler {
         storeId: this.currentTab.cookieStoreId,
       },
       callback
+    );
+  }
+
+  /**
+   * Removes a browser cookie using the exact tuple returned by the cookies API.
+   * @param {object} cookie Cookie returned from the browser cookies API.
+   * @param {function} callback
+   */
+  removeCookieDetails(cookie, callback) {
+    const removeDetails = {
+      name: cookie.name,
+      url: this.getUrlForCookie(cookie),
+      storeId: cookie.storeId || this.currentTab.cookieStoreId,
+    };
+
+    if (cookie.partitionKey) {
+      removeDetails.partitionKey = cookie.partitionKey;
+    }
+    if (this.browserDetector.isFirefox() && cookie.firstPartyDomain) {
+      removeDetails.firstPartyDomain = cookie.firstPartyDomain;
+    }
+
+    this.sendMessage(
+      'removeCookieDetails',
+      {
+        removeDetails: removeDetails,
+      },
+      function (response) {
+        if (callback) {
+          callback(response ? response.error : null, response?.cookie);
+        }
+      }
     );
   }
 

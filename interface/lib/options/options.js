@@ -18,5 +18,7 @@ export class Options {
     this.theme = Themes.Auto;
     this.buttonBarTop = false;
     this.adsEnabled = true;
+    this.remoteSyncUrl = '';
+    this.remoteSyncBearerToken = '';
   }
 }

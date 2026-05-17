@@ -28,7 +28,8 @@ body * {
   text-align: start;
 }
 
-.notransition *, .notransition *::before {
+.notransition *,
+.notransition *::before {
   -webkit-transition: none !important;
   -moz-transition: none !important;
   -o-transition: none !important;
@@ -399,7 +400,6 @@ form.import > div {
   color: var(--secondary-text-color);
 }
 
-
 #cookie-container li .expando {
   max-height: 0;
   display: none;
@@ -745,7 +745,8 @@ label {
   margin-left: 15px;
 }
 
-#export-menu {
+#export-menu,
+#remote-sync-menu {
   border-radius: 5px;
   position: fixed;
   bottom: 80px;
@@ -758,7 +759,8 @@ label {
   margin-left: 10px;
 }
 
-#export-menu:after {
+#export-menu:after,
+#remote-sync-menu:after {
   content: '';
   position: absolute;
   top: 100%;
@@ -770,18 +772,21 @@ label {
   border-right: solid 15px transparent;
 }
 
-.button-bar-top #export-menu {
+.button-bar-top #export-menu,
+.button-bar-top #remote-sync-menu {
   top: 142px;
   bottom: auto;
 }
-.button-bar-top #export-menu:after {
+.button-bar-top #export-menu:after,
+.button-bar-top #remote-sync-menu:after {
   top: auto;
   bottom: 100%;
   border-top: none;
   border-bottom: solid 10px var(--menu-surface-color);
 }
 
-#export-menu button {
+#export-menu button,
+#remote-sync-menu button {
   background-color: var(--menu-surface-color);
   color: var(--primary-text-color);
   border: 1px solid var(--menu-border-color);
@@ -790,7 +795,8 @@ label {
   font-size: 14px;
   transition: all 100ms linear;
 }
-#export-menu button:hover {
+#export-menu button:hover,
+#remote-sync-menu button:hover {
   border-color: var(--primary-outline-color);
   box-shadow: 2px 2px 3px rgba(0, 0, 0, 0.1);
   background-color: rgba(0, 0, 0, 0.03);

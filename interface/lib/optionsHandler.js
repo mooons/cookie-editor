@@ -256,6 +256,38 @@ export class OptionsHandler extends EventEmitter {
   }
 
   /**
+   * Gets the remote sync server URL.
+   * @return {string} The configured remote sync server URL.
+   */
+  getRemoteSyncUrl() {
+    return this.options.remoteSyncUrl || '';
+  }
+  /**
+   * Sets the remote sync server URL.
+   * @param {string} remoteSyncUrl Remote sync server URL.
+   */
+  setRemoteSyncUrl(remoteSyncUrl) {
+    this.options.remoteSyncUrl = (remoteSyncUrl || '').trim();
+    this.saveOptions();
+  }
+
+  /**
+   * Gets the remote sync bearer token.
+   * @return {string} The configured remote sync bearer token.
+   */
+  getRemoteSyncBearerToken() {
+    return this.options.remoteSyncBearerToken || '';
+  }
+  /**
+   * Sets the remote sync bearer token.
+   * @param {string} remoteSyncBearerToken Remote sync bearer token.
+   */
+  setRemoteSyncBearerToken(remoteSyncBearerToken) {
+    this.options.remoteSyncBearerToken = (remoteSyncBearerToken || '').trim();
+    this.saveOptions();
+  }
+
+  /**
    * Loads all the options. This is done at load time, but can be called
    * manually to reload the options.
    */

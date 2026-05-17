@@ -97,6 +97,25 @@ import { PermissionHandler } from './interface/lib/permissionHandler.js';
         }
         return true;
       }
+      case 'getAllCookiesForDomain': {
+        const getAllCookiesParams = {
+          domain: request.params.domain,
+        };
+        if (request.params.storeId) {
+          getAllCookiesParams.storeId = request.params.storeId;
+        }
+        if (browserDetector.supportsPromises()) {
+          browserDetector
+            .getApi()
+            .cookies.getAll(getAllCookiesParams)
+            .then(sendResponse);
+        } else {
+          browserDetector
+            .getApi()
+            .cookies.getAll(getAllCookiesParams, sendResponse);
+        }
+        return true;
+      }
       case 'saveCookie': {
         if (browserDetector.supportsPromises()) {
           browserDetector
@@ -138,6 +157,37 @@ import { PermissionHandler } from './interface/lib/permissionHandler.js';
             .then(sendResponse);
         } else {
           browserDetector.getApi().cookies.remove(removeParams, sendResponse);
+        }
+        return true;
+      }
+      case 'removeCookieDetails': {
+        if (browserDetector.supportsPromises()) {
+          browserDetector
+            .getApi()
+            .cookies.remove(request.params.removeDetails)
+            .then(
+              cookie => {
+                sendResponse({ cookie: cookie });
+              },
+              error => {
+                console.error('Failed to remove cookie', error);
+                sendResponse({ error: error.message });
+              }
+            );
+        } else {
+          browserDetector
+            .getApi()
+            .cookies.remove(request.params.removeDetails, cookie => {
+              const error = browserDetector.getApi().runtime.lastError;
+              if (!cookie || error) {
+                console.error('Failed to remove cookie', error);
+                sendResponse({
+                  error: (error ? error.message : '') || 'Unknown error',
+                });
+                return;
+              }
+              sendResponse({ cookie: cookie });
+            });
         }
         return true;
       }

@@ -23,6 +23,8 @@ document.addEventListener('DOMContentLoaded', async event => {
   const themeInput = document.getElementById('theme');
   const buttonBarTopInput = document.getElementById('button-bar-top');
   const adsEnabledInput = document.getElementById('ads-enabled');
+  const remoteSyncUrlInput = document.getElementById('remote-sync-url');
+  const remoteSyncTokenInput = document.getElementById('remote-sync-token');
 
   await optionHandler.loadOptions();
   themeHandler.updateTheme();
@@ -44,6 +46,8 @@ document.addEventListener('DOMContentLoaded', async event => {
     themeInput.value = optionHandler.getTheme();
     buttonBarTopInput.checked = optionHandler.getButtonBarTop();
     adsEnabledInput.checked = optionHandler.getAdsEnabled();
+    remoteSyncUrlInput.value = optionHandler.getRemoteSyncUrl();
+    remoteSyncTokenInput.value = optionHandler.getRemoteSyncBearerToken();
 
     if (!browserDetector.isSafari()) {
       document
@@ -106,6 +110,24 @@ document.addEventListener('DOMContentLoaded', async event => {
       }
       optionHandler.setAdsEnabled(adsEnabledInput.checked);
     });
+    remoteSyncUrlInput.addEventListener('change', event => {
+      if (!event.isTrusted) {
+        return;
+      }
+      optionHandler.setRemoteSyncUrl(remoteSyncUrlInput.value);
+    });
+    remoteSyncTokenInput.addEventListener('change', event => {
+      if (!event.isTrusted) {
+        return;
+      }
+      optionHandler.setRemoteSyncBearerToken(remoteSyncTokenInput.value);
+    });
+
+    document
+      .getElementById('remote-sync-test')
+      .addEventListener('click', async () => {
+        await testRemoteSyncConnection();
+      });
 
     document
       .getElementById('delete-all')
@@ -192,6 +214,46 @@ document.addEventListener('DOMContentLoaded', async event => {
     const cookies = await getAllCookies();
     copyText(NetscapeFormat.format(cookies));
     alert('Done!');
+  }
+
+  /**
+   * Tests the configured remote sync server without mutating cookies.
+   */
+  async function testRemoteSyncConnection() {
+    const baseUrl = remoteSyncUrlInput.value.trim().replace(/\/+$/, '');
+    const token = remoteSyncTokenInput.value.trim();
+    if (!baseUrl || !token) {
+      alert('Configure both the server URL and bearer token first.');
+      return;
+    }
+
+    try {
+      const healthResponse = await fetch(baseUrl + '/health');
+      if (!healthResponse.ok) {
+        alert('Remote sync health check failed.');
+        return;
+      }
+
+      const authResponse = await fetch(baseUrl + '/v1/cookie-sets/localhost', {
+        headers: {
+          Authorization: 'Bearer ' + token,
+        },
+      });
+      if (authResponse.status === 200 || authResponse.status === 404) {
+        optionHandler.setRemoteSyncUrl(baseUrl);
+        optionHandler.setRemoteSyncBearerToken(token);
+        alert('Remote sync connection is ready.');
+        return;
+      }
+      if (authResponse.status === 401) {
+        alert('Remote sync bearer token was rejected.');
+        return;
+      }
+      alert('Remote sync test failed with HTTP ' + authResponse.status + '.');
+    } catch (error) {
+      console.error(error);
+      alert('Remote sync test failed: ' + error.message);
+    }
   }
 
   /**

@@ -22,6 +22,7 @@ import { CookieHandlerPopup } from './cookieHandlerPopup.js';
   let notificationElement;
   let loadedCookies = {};
   let disableButtons = false;
+  let remoteSyncBusy = false;
 
   const notificationQueue = [];
   let notificationTimeout;
@@ -340,6 +341,16 @@ import { CookieHandlerPopup } from './cookieHandlerPopup.js';
       handleExportButtonClick();
     });
 
+    document
+      .getElementById('remote-sync-cookies')
+      .addEventListener('click', () => {
+        if (disableButtons || remoteSyncBusy) {
+          hideRemoteSyncMenu();
+          return;
+        }
+        toggleRemoteSyncMenu();
+      });
+
     document.getElementById('import-cookies').addEventListener('click', () => {
       if (disableButtons) {
         return;
@@ -502,6 +513,22 @@ import { CookieHandlerPopup } from './cookieHandlerPopup.js';
 
       console.log('export menu blur');
       hideExportMenu();
+    });
+
+    document.addEventListener('click', function (e) {
+      const remoteSyncMenu = document.querySelector('#remote-sync-menu');
+      // Clicks in the remote sync menu should not dismiss it.
+      if (!remoteSyncMenu || remoteSyncMenu.contains(e.target)) {
+        return;
+      }
+
+      const remoteSyncButton = document.querySelector('#remote-sync-cookies');
+      if (!remoteSyncButton || remoteSyncButton.contains(e.target)) {
+        return;
+      }
+
+      console.log('remote sync menu blur');
+      hideRemoteSyncMenu();
     });
 
     document
@@ -913,6 +940,52 @@ import { CookieHandlerPopup } from './cookieHandlerPopup.js';
     }
   }
 
+  /**
+   * Toggles the visibility of the remote sync menu.
+   */
+  function toggleRemoteSyncMenu() {
+    hideExportMenu();
+    if (document.getElementById('remote-sync-menu')) {
+      hideRemoteSyncMenu();
+    } else {
+      showRemoteSyncMenu();
+    }
+  }
+
+  /**
+   * Shows the remote sync menu.
+   */
+  function showRemoteSyncMenu() {
+    const template = document.importNode(
+      document.getElementById('tmp-remote-sync-options').content,
+      true
+    );
+    containerCookie.appendChild(template.getElementById('remote-sync-menu'));
+
+    document.getElementById('remote-sync-push').focus();
+    document
+      .getElementById('remote-sync-push')
+      .addEventListener('click', () => {
+        pushCookiesToRemote();
+      });
+    document
+      .getElementById('remote-sync-pull')
+      .addEventListener('click', () => {
+        pullCookiesFromRemote();
+      });
+  }
+
+  /**
+   * Hides the remote sync menu.
+   */
+  function hideRemoteSyncMenu() {
+    const remoteSyncMenu = document.getElementById('remote-sync-menu');
+    if (remoteSyncMenu) {
+      containerCookie.removeChild(remoteSyncMenu);
+      document.activeElement.blur();
+    }
+  }
+
   if (typeof createHtmlFormCookie === 'undefined') {
     // This should not happen anyway ;)
     // eslint-disable-next-line no-func-assign
@@ -980,6 +1053,323 @@ import { CookieHandlerPopup } from './cookieHandlerPopup.js';
     setTimeout(() => {
       buttonIcon.setAttribute('href', '../sprites/solid.svg#file-export');
     }, 1500);
+  }
+
+  /**
+   * Pushes all cookies in the current site scope to the remote server.
+   */
+  async function pushCookiesToRemote() {
+    if (remoteSyncBusy) {
+      return;
+    }
+    hideRemoteSyncMenu();
+
+    const config = getRemoteSyncConfig();
+    if (!config) {
+      return;
+    }
+
+    remoteSyncBusy = true;
+    setRemoteSyncIcon('../sprites/solid.svg#cloud-upload-alt');
+    try {
+      const domain = getCurrentSyncDomain();
+      const cookies = await getCookiesForSyncDomain(domain);
+      const payload = {
+        version: 1,
+        domain: domain,
+        updatedAt: new Date().toISOString(),
+        source: {
+          browser: browserDetector.getBrowserName(),
+          extensionVersion: browserDetector.getApi().runtime.getManifest()
+            .version,
+        },
+        cookies: cookies.map(normalizeCookieForRemote),
+      };
+
+      const response = await fetch(
+        config.baseUrl + '/v1/cookie-sets/' + encodeURIComponent(domain),
+        {
+          method: 'PUT',
+          headers: getRemoteSyncHeaders(config),
+          body: JSON.stringify(payload),
+        }
+      );
+      if (!response.ok) {
+        throw new Error(await getRemoteSyncError(response));
+      }
+
+      setRemoteSyncIcon('../sprites/solid.svg#check', true);
+      sendNotification('Cookies pushed to remote for ' + domain);
+    } catch (error) {
+      console.error(error);
+      setRemoteSyncIcon('../sprites/solid.svg#times', true);
+      sendNotification('Remote push failed: ' + error.message);
+    } finally {
+      remoteSyncBusy = false;
+    }
+  }
+
+  /**
+   * Pulls cookies from the remote server and replaces local cookies in scope.
+   */
+  async function pullCookiesFromRemote() {
+    if (remoteSyncBusy) {
+      return;
+    }
+    hideRemoteSyncMenu();
+
+    const config = getRemoteSyncConfig();
+    if (!config) {
+      return;
+    }
+
+    remoteSyncBusy = true;
+    setRemoteSyncIcon('../sprites/solid.svg#cloud-download-alt');
+    try {
+      const domain = getCurrentSyncDomain();
+      const response = await fetch(
+        config.baseUrl + '/v1/cookie-sets/' + encodeURIComponent(domain),
+        {
+          headers: getRemoteSyncHeaders(config),
+        }
+      );
+      if (response.status === 404) {
+        setRemoteSyncIcon('../sprites/solid.svg#sync-alt', true);
+        sendNotification('No remote cookies saved for ' + domain);
+        return;
+      }
+      if (!response.ok) {
+        throw new Error(await getRemoteSyncError(response));
+      }
+
+      const payload = await response.json();
+      validateRemoteCookiePayload(payload, domain);
+      const cookieCount = payload.cookies.length;
+      const shouldReplace = confirm(
+        'Replace all local cookies for ' +
+          domain +
+          ' with ' +
+          cookieCount +
+          ' remote cookies?'
+      );
+      if (!shouldReplace) {
+        setRemoteSyncIcon('../sprites/solid.svg#sync-alt', true);
+        return;
+      }
+
+      const localCookies = await getCookiesForSyncDomain(domain);
+      await removeCookiesForRemoteSync(localCookies);
+      const failures = await saveCookiesFromRemote(payload.cookies);
+      showCookiesForTab();
+
+      if (failures.length) {
+        setRemoteSyncIcon('../sprites/solid.svg#times', true);
+        sendNotification(
+          'Remote pull finished with ' + failures.length + ' failures'
+        );
+        return;
+      }
+
+      setRemoteSyncIcon('../sprites/solid.svg#check', true);
+      sendNotification('Remote cookies imported for ' + domain);
+    } catch (error) {
+      console.error(error);
+      setRemoteSyncIcon('../sprites/solid.svg#times', true);
+      sendNotification('Remote pull failed: ' + error.message);
+    } finally {
+      remoteSyncBusy = false;
+    }
+  }
+
+  /**
+   * Gets the configured remote sync server settings.
+   * @return {object|null} Remote sync config.
+   */
+  function getRemoteSyncConfig() {
+    const baseUrl = optionHandler.getRemoteSyncUrl().replace(/\/+$/, '');
+    const token = optionHandler.getRemoteSyncBearerToken();
+    if (!baseUrl || !token) {
+      sendNotification('Configure remote sync in options first.');
+      return null;
+    }
+    return {
+      baseUrl: baseUrl,
+      token: token,
+    };
+  }
+
+  /**
+   * Gets request headers for remote sync API calls.
+   * @param {object} config Remote sync config.
+   * @return {object} Fetch headers.
+   */
+  function getRemoteSyncHeaders(config) {
+    return {
+      Authorization: 'Bearer ' + config.token,
+      'Content-Type': 'application/json',
+    };
+  }
+
+  /**
+   * Extracts a useful remote sync error message.
+   * @param {Response} response Fetch response.
+   * @return {Promise<string>} Error message.
+   */
+  async function getRemoteSyncError(response) {
+    let details = '';
+    try {
+      details = await response.text();
+    } catch (error) {
+      console.warn(error);
+    }
+    return 'HTTP ' + response.status + (details ? ': ' + details : '');
+  }
+
+  /**
+   * Sets the icon for the remote sync button.
+   * @param {string} iconHref SVG symbol href.
+   * @param {boolean} reset Whether to reset back to the sync icon.
+   */
+  function setRemoteSyncIcon(iconHref, reset = false) {
+    const buttonIcon = document
+      .getElementById('remote-sync-cookies')
+      .querySelector('use');
+    buttonIcon.setAttribute('href', iconHref);
+    if (reset) {
+      setTimeout(() => {
+        buttonIcon.setAttribute('href', '../sprites/solid.svg#sync-alt');
+      }, 1500);
+    }
+  }
+
+  /**
+   * Gets the current site scope used by the remote sync backend.
+   * @return {string} Normalized domain scope.
+   */
+  function getCurrentSyncDomain() {
+    const currentUrl = getCurrentTabUrl();
+    const hostname = getDomainFromUrl(currentUrl);
+    if (!hostname) {
+      throw new Error('Remote sync is only available on web pages.');
+    }
+    if (hostname === 'localhost' || isIpv4Address(hostname)) {
+      return hostname;
+    }
+    return permissionHandler.getRootDomainName(hostname);
+  }
+
+  /**
+   * Gets all cookies in the current remote sync domain.
+   * @param {string} domain Domain scope.
+   * @return {Promise<object[]>} Cookies from the browser API.
+   */
+  function getCookiesForSyncDomain(domain) {
+    return new Promise(resolve => {
+      cookieHandler.getAllCookiesForDomain(domain, cookies => {
+        resolve(cookies || []);
+      });
+    });
+  }
+
+  /**
+   * Normalizes a browser cookie for remote storage.
+   * @param {object} cookie Browser cookie object.
+   * @return {object} Serializable cookie object.
+   */
+  function normalizeCookieForRemote(cookie) {
+    const keys = [
+      'name',
+      'value',
+      'domain',
+      'hostOnly',
+      'path',
+      'secure',
+      'httpOnly',
+      'sameSite',
+      'expirationDate',
+      'session',
+      'partitionKey',
+      'firstPartyDomain',
+    ];
+    const normalizedCookie = {};
+    for (const key of keys) {
+      if (cookie[key] !== undefined) {
+        normalizedCookie[key] = cookie[key];
+      }
+    }
+    if (normalizedCookie.sameSite === 'unspecified') {
+      normalizedCookie.sameSite = null;
+    }
+    return normalizedCookie;
+  }
+
+  /**
+   * Validates a remote cookie payload before local cookies are cleared.
+   * @param {object} payload Remote payload.
+   * @param {string} expectedDomain Expected domain scope.
+   */
+  function validateRemoteCookiePayload(payload, expectedDomain) {
+    if (!payload || payload.version !== 1) {
+      throw new Error('Remote cookie payload has an unsupported version.');
+    }
+    if (payload.domain !== expectedDomain) {
+      throw new Error('Remote cookie payload domain does not match.');
+    }
+    if (!isArray(payload.cookies)) {
+      throw new Error('Remote cookie payload does not contain cookies.');
+    }
+  }
+
+  /**
+   * Removes a list of cookies with exact tuple semantics.
+   * @param {object[]} cookies Browser cookies to remove.
+   */
+  async function removeCookiesForRemoteSync(cookies) {
+    for (const cookie of cookies) {
+      await new Promise(resolve => {
+        cookieHandler.removeCookieDetails(cookie, function (error) {
+          if (error) {
+            console.warn(error);
+          }
+          resolve();
+        });
+      });
+    }
+  }
+
+  /**
+   * Saves remote cookies into the current cookie store.
+   * @param {object[]} cookies Cookies from the remote payload.
+   * @return {Promise<string[]>} Import failure messages.
+   */
+  async function saveCookiesFromRemote(cookies) {
+    const failures = [];
+    for (const cookie of cookies) {
+      const cookieToSave = Object.assign({}, cookie);
+      cookieToSave.storeId = cookieHandler.currentTab.cookieStoreId;
+      if (cookieToSave.sameSite === 'unspecified') {
+        cookieToSave.sameSite = null;
+      }
+
+      await new Promise(resolve => {
+        try {
+          cookieHandler.saveCookie(
+            cookieToSave,
+            getCurrentTabUrl(),
+            function (error) {
+              if (error) {
+                failures.push(error);
+              }
+              resolve();
+            }
+          );
+        } catch (error) {
+          failures.push(error.message);
+          resolve();
+        }
+      });
+    }
+    return failures;
   }
 
   /**
@@ -1100,8 +1490,31 @@ import { CookieHandlerPopup } from './cookieHandlerPopup.js';
    * @return {string} The domain extracted.
    */
   function getDomainFromUrl(url) {
-    const matches = url.match(/^https?:\/\/([^/?#]+)(?:[/?#]|$)/i);
-    return matches && matches[1];
+    try {
+      const parsedUrl = new URL(url);
+      if (parsedUrl.protocol === 'http:' || parsedUrl.protocol === 'https:') {
+        return parsedUrl.hostname.toLowerCase().replace(/\.$/, '');
+      }
+    } catch (error) {
+      console.warn(error);
+    }
+    return '';
+  }
+
+  /**
+   * Checks if a hostname is an IPv4 address.
+   * @param {string} hostname Hostname to check.
+   * @return {boolean} True when the hostname is IPv4.
+   */
+  function isIpv4Address(hostname) {
+    const parts = hostname.split('.');
+    if (parts.length !== 4) {
+      return false;
+    }
+    return parts.every(part => {
+      const partNumber = Number(part);
+      return part !== '' && partNumber >= 0 && partNumber <= 255;
+    });
   }
 
   /**

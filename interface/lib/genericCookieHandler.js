@@ -42,6 +42,28 @@ export class GenericCookieHandler extends EventEmitter {
   }
 
   /**
+   * Gets all cookies matching a domain in the current cookie store.
+   * @param {string} domain Domain to retrieve cookies for.
+   * @param {function} callback
+   */
+  getAllCookiesForDomain(domain, callback) {
+    const details = {
+      domain: domain,
+      storeId: this.currentTab.cookieStoreId,
+    };
+    if (this.browserDetector.supportsPromises()) {
+      this.browserDetector
+        .getApi()
+        .cookies.getAll(details)
+        .then(callback, function (e) {
+          console.error('Failed to retrieve cookies', e);
+        });
+    } else {
+      this.browserDetector.getApi().cookies.getAll(details, callback);
+    }
+  }
+
+  /**
    * Prepares a cookie to be saved. Cleans it up for certain browsers.
    * @param {object} cookie
    * @param {string} url
@@ -191,6 +213,79 @@ export class GenericCookieHandler extends EventEmitter {
         }
       );
     }
+  }
+
+  /**
+   * Removes a browser cookie using the exact tuple returned by the cookies API.
+   * @param {object} cookie Cookie returned from the browser cookies API.
+   * @param {function} callback
+   */
+  removeCookieDetails(cookie, callback) {
+    const removeDetails = {
+      name: cookie.name,
+      url: this.getUrlForCookie(cookie),
+      storeId: cookie.storeId || this.currentTab.cookieStoreId,
+    };
+
+    if (cookie.partitionKey) {
+      removeDetails.partitionKey = cookie.partitionKey;
+    }
+    if (this.browserDetector.isFirefox() && cookie.firstPartyDomain) {
+      removeDetails.firstPartyDomain = cookie.firstPartyDomain;
+    }
+
+    if (this.browserDetector.supportsPromises()) {
+      this.browserDetector
+        .getApi()
+        .cookies.remove(removeDetails)
+        .then(
+          cookieResponse => {
+            if (callback) {
+              callback(null, cookieResponse);
+            }
+          },
+          error => {
+            console.error('Failed to remove cookie', error);
+            if (callback) {
+              callback(error.message, null);
+            }
+          }
+        );
+    } else {
+      this.browserDetector
+        .getApi()
+        .cookies.remove(removeDetails, cookieResponse => {
+          const error = this.browserDetector.getApi().runtime.lastError;
+          if (!cookieResponse || error) {
+            console.error('Failed to remove cookie', error);
+            if (callback) {
+              const errorMessage =
+                (error ? error.message : '') || 'Unknown error';
+              return callback(errorMessage, cookieResponse);
+            }
+            return;
+          }
+
+          if (callback) {
+            return callback(null, cookieResponse);
+          }
+        });
+    }
+  }
+
+  /**
+   * Builds a URL that identifies a cookie for set/remove API calls.
+   * @param {object} cookie Cookie returned from the browser cookies API.
+   * @return {string} URL matching the cookie's domain, path, and security.
+   */
+  getUrlForCookie(cookie) {
+    const protocol = cookie.secure ? 'https:' : 'http:';
+    const domain = (cookie.domain || '').replace(/^\./, '');
+    let path = cookie.path || '/';
+    if (path[0] !== '/') {
+      path = '/' + path;
+    }
+    return protocol + '//' + domain + path;
   }
 
   /**

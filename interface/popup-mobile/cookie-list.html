@@ -26,15 +26,13 @@
           <label
             class="menu-item switch"
             for="advanced-toggle-all"
-            id="advanced-toggle-all-label"
-          >
+            id="advanced-toggle-all-label">
             Show Advanced
             <label class="switch">
               <input
                 type="checkbox"
                 id="advanced-toggle-all"
-                aria-describedby="advanced-toggle-all-label"
-              />
+                aria-describedby="advanced-toggle-all-label" />
               <span class="slider"></span>
             </label>
           </label>
@@ -56,8 +54,7 @@
         <button
           class="panel-section-footer-button"
           id="create-cookie"
-          type="button"
-        >
+          type="button">
           <div>
             <svg class="icon"><use href="../sprites/solid.svg#plus"></use></svg>
             <div class="tooltip" role="tooltip">Add</div>
@@ -68,8 +65,7 @@
         <button
           class="panel-section-footer-button danger"
           id="delete-all-cookies"
-          type="button"
-        >
+          type="button">
           <div>
             <svg class="icon">
               <use href="../sprites/solid.svg#trash"></use>
@@ -82,8 +78,7 @@
         <button
           class="panel-section-footer-button"
           id="import-cookies"
-          type="button"
-        >
+          type="button">
           <div>
             <svg class="icon">
               <use href="../sprites/solid.svg#file-import"></use>
@@ -96,13 +91,25 @@
         <button
           class="panel-section-footer-button"
           id="export-cookies"
-          type="button"
-        >
+          type="button">
           <div>
             <svg class="icon">
               <use href="../sprites/solid.svg#file-export"></use>
             </svg>
             <div class="tooltip" role="tooltip">Export</div>
+          </div>
+        </button>
+        <div class="panel-section-footer-separator"></div>
+
+        <button
+          class="panel-section-footer-button"
+          id="remote-sync-cookies"
+          type="button">
+          <div>
+            <svg class="icon">
+              <use href="../sprites/solid.svg#sync-alt"></use>
+            </svg>
+            <div class="tooltip" role="tooltip">Remote Sync</div>
           </div>
         </button>
       </div>
@@ -113,8 +120,7 @@
         <button
           class="panel-section-footer-button"
           id="return-list-add"
-          type="button"
-        >
+          type="button">
           <div>
             <svg class="icon">
               <use href="../sprites/solid.svg#arrow-left"></use>
@@ -127,8 +133,7 @@
         <button
           class="panel-section-footer-button primary"
           id="save-create-cookie"
-          type="button"
-        >
+          type="button">
           <div>
             <svg class="icon"><use href="../sprites/solid.svg#save"></use></svg>
             <div class="tooltip" role="tooltip">Add</div>
@@ -142,8 +147,7 @@
         <button
           class="panel-section-footer-button"
           id="return-list-import"
-          type="button"
-        >
+          type="button">
           <div>
             <svg class="icon">
               <use href="../sprites/solid.svg#arrow-left"></use>
@@ -156,8 +160,7 @@
         <button
           class="panel-section-footer-button primary"
           id="save-import-cookie"
-          type="button"
-        >
+          type="button">
           <div>
             <svg class="icon">
               <use href="../sprites/solid.svg#file-import"></use>
@@ -174,8 +177,7 @@
         <button
           id="notification-dismiss"
           aria-label="Dismiss Notification"
-          type="button"
-        >
+          type="button">
           <svg class="icon"><use href="../sprites/solid.svg#times"></use></svg>
         </button>
       </div>
@@ -189,8 +191,7 @@
           class="header container"
           tabindex="0"
           role="button"
-          aria-expanded="false"
-        >
+          aria-expanded="false">
           <svg class="icon arrow">
             <use href="../sprites/solid.svg#angle-down"></use>
           </svg>
@@ -202,8 +203,7 @@
               data-tooltip-left="Delete"
               aria-label="Delete"
               tabindex="-1"
-              type="button"
-            >
+              type="button">
               <svg class="icon">
                 <use href="../sprites/solid.svg#trash"></use>
               </svg>
@@ -217,8 +217,7 @@
                 class="delete"
                 data-tooltip="Delete"
                 aria-label="Delete"
-                type="button"
-              >
+                type="button">
                 <svg class="icon">
                   <use href="../sprites/solid.svg#trash"></use>
                 </svg>
@@ -227,8 +226,7 @@
                 class="save"
                 data-tooltip="Save"
                 aria-label="Save"
-                type="submit"
-              >
+                type="submit">
                 <svg class="icon">
                   <use href="../sprites/solid.svg#save"></use>
                 </svg>
@@ -257,8 +255,7 @@
                   <input
                     name="expiration"
                     type="text"
-                    class="input-expiration"
-                  />
+                    class="input-expiration" />
                 </div>
                 <div>
                   <label class="label-sameSite">Same Site</label>
@@ -273,16 +270,14 @@
                     <input
                       type="checkbox"
                       name="hostOnly"
-                      class="input-hostOnly"
-                    />
+                      class="input-hostOnly" />
                     Host Only
                   </label>
                   <label class="label-session">
                     <input
                       type="checkbox"
                       name="session"
-                      class="input-session"
-                    />
+                      class="input-session" />
                     Session
                   </label>
                   <label class="label-secure">
@@ -293,8 +288,7 @@
                     <input
                       type="checkbox"
                       name="httpOnly"
-                      class="input-httpOnly"
-                    />
+                      class="input-httpOnly" />
                     Http Only
                   </label>
                 </div>
@@ -320,8 +314,7 @@
             class="json"
             name="content"
             id="content-import"
-            placeholder='JSON:	&#10;[{"name":"Cookie","value":"text",[...]}] &#10;&#10;Header String:	&#10;Cookie=text;Editor=yes	&#10;&#10;Netscape:	&#10;# Netscape HTTP Cookie File	&#10;# [...]	&#10;cookie-editor.com[...]	Cookie	text'
-          ></textarea>
+            placeholder='JSON:	&#10;[{"name":"Cookie","value":"text",[...]}] &#10;&#10;Header String:	&#10;Cookie=text;Editor=yes	&#10;&#10;Netscape:	&#10;# Netscape HTTP Cookie File	&#10;# [...]	&#10;cookie-editor.com[...]	Cookie	text'></textarea>
         </div>
       </form>
     </template>
@@ -354,14 +347,12 @@
           <div class="button-container">
             <button
               id="request-permission"
-              title="Request permission to read cookies for this site."
-            >
+              title="Request permission to read cookies for this site.">
               This site
             </button>
             <button
               id="request-permission-all"
-              title="Request permission to read cookies for all sites."
-            >
+              title="Request permission to read cookies for all sites.">
               All sites
             </button>
           </div>
@@ -392,6 +383,14 @@
         <button id="export-json" type="button">JSON</button>
         <button id="export-headerstring" type="button">Header String</button>
         <button id="export-netscape" type="button">Netscape</button>
+      </div>
+    </template>
+
+    <template id="tmp-remote-sync-options">
+      <div id="remote-sync-menu">
+        <h3>Remote Sync:</h3>
+        <button id="remote-sync-push" type="button">Push to Remote</button>
+        <button id="remote-sync-pull" type="button">Pull from Remote</button>
       </div>
     </template>
 
