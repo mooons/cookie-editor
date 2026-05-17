@@ -1,0 +1,52 @@
+name: cookie-sync
+
+services:
+  cookie-sync:
+    image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
+    restart: unless-stopped
+    working_dir: /app
+    command: ["uv", "run", "cookie_sync_server.py"]
+    env_file:
+      - .env
+    environment:
+      COOKIE_SYNC_BIND: 0.0.0.0
+      COOKIE_SYNC_PORT: 8765
+      COOKIE_SYNC_STORAGE_DIR: /data
+    volumes:
+      - ./:/app:ro
+      - cookie-sync-data:/data
+    expose:
+      - "8765"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8765/health', timeout=5).read()",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on:
+      cookie-sync:
+        condition: service_healthy
+    environment:
+      COOKIE_SYNC_DOMAIN: ${COOKIE_SYNC_DOMAIN:?set COOKIE_SYNC_DOMAIN in .env}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  cookie-sync-data:
+  caddy-data:
+  caddy-config:
